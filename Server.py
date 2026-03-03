@@ -69,3 +69,8 @@ def transcript():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
+flask
+flask-cors
+youtube-transcript-api
+gunicorn
+web: gunicorn server:app --bind 0.0.0.0:$PORT
