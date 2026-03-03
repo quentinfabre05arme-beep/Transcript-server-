@@ -36,7 +36,7 @@ def transcript():
     url = f'https://www.youtube.com/watch?v={vid}'
     r = requests.get(
         'https://api.supadata.ai/v1/youtube/transcript',
-        params={'url': url, 'text': 'true'},
+        params={'url': url, 'text': 'true', 'lang': 'en'},
         headers={'x-api-key': SUPADATA_API_KEY}
     )
 
