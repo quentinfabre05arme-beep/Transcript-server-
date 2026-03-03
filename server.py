@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request, make_response
 from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
+from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound, VideoUnavailable
 
 app = Flask(__name__)
 
@@ -29,31 +29,45 @@ def transcript():
     if not video_id:
         return jsonify({"error": "Missing ?id="}), 400
     try:
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        # New API: try languages in order
+        languages = ['en', 'en-US', 'en-GB']
         transcript = None
-        for fn in [
-            lambda: transcript_list.find_manually_created_transcript(['en','en-US','en-GB']),
-            lambda: transcript_list.find_generated_transcript(['en','en-US','en-GB','a.en']),
-        ]:
-            try: transcript = fn(); break
-            except: continue
-        if not transcript:
-            for t in transcript_list: transcript = t; break
+        language_used = 'en'
+        is_generated = False
+
+        try:
+            transcript = YouTubeTranscriptApi.fetch(video_id, languages=languages)
+            language_used = 'en'
+        except Exception:
+            try:
+                # Try auto-generated
+                transcript = YouTubeTranscriptApi.fetch(video_id, languages=['a.en'])
+                language_used = 'a.en'
+                is_generated = True
+            except Exception:
+                # Last resort: no language preference
+                transcript = YouTubeTranscriptApi.fetch(video_id)
+                language_used = 'unknown'
+
         if not transcript:
             return jsonify({"error": "No transcript available"}), 404
-        data = transcript.fetch()
-        text = ' '.join(e['text'] for e in data).replace('\n', ' ').strip()
+
+        text = ' '.join(e['text'] for e in transcript).replace('\n', ' ').strip()
+
         return jsonify({
             "video_id": video_id,
-            "language": transcript.language_code,
-            "is_generated": transcript.is_generated,
+            "language": language_used,
+            "is_generated": is_generated,
             "length": len(text),
             "transcript": text
         })
+
     except TranscriptsDisabled:
-        return jsonify({"error": "Transcripts disabled"}), 403
+        return jsonify({"error": "Transcripts disabled for this video"}), 403
     except NoTranscriptFound:
         return jsonify({"error": "No transcript found"}), 404
+    except VideoUnavailable:
+        return jsonify({"error": "Video unavailable"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
