@@ -19,7 +19,7 @@ def after(r):
 
 @app.route('/')
 def home():
-    return jsonify({"status": "ok", "version": "2"})
+    return jsonify({"status": "ok", "version": "3"})
 
 @app.route('/transcript')
 def transcript():
@@ -28,17 +28,23 @@ def transcript():
         return jsonify({"error": "Missing ?id="}), 400
     try:
         from youtube_transcript_api import YouTubeTranscriptApi
-        data = YouTubeTranscriptApi.fetch(vid, languages=['en','en-US','en-GB'])
-        text = ' '.join(e['text'] for e in data).replace('\n', ' ').strip()
-        return jsonify({"video_id": vid, "language": "en", "is_generated": False, "length": len(text), "transcript": text})
-    except Exception as e1:
+        ytt = YouTubeTranscriptApi()
+
         try:
-            from youtube_transcript_api import YouTubeTranscriptApi
-            data = YouTubeTranscriptApi.fetch(vid)
-            text = ' '.join(e['text'] for e in data).replace('\n', ' ').strip()
-            return jsonify({"video_id": vid, "language": "auto", "is_generated": True, "length": len(text), "transcript": text})
-        except Exception as e2:
-            return jsonify({"error": str(e2)}), 500
+            data = ytt.fetch(vid, languages=['en', 'en-US', 'en-GB'])
+        except Exception:
+            data = ytt.fetch(vid)
+
+        text = ' '.join(e['text'] for e in data).replace('\n', ' ').strip()
+        return jsonify({
+            "video_id": vid,
+            "language": "en",
+            "is_generated": False,
+            "length": len(text),
+            "transcript": text
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080)
