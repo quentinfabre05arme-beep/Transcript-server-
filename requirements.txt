@@ -1,4 +1,4 @@
 flask
 flask-cors
-youtube-transcript-api
+requests
 gunicorn
